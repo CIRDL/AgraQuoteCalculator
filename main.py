@@ -2,16 +2,16 @@
 # @program Agra Quote Calculator
 
 from error import *
-from calculations import *
+from calculations import converter
+from calculations import diameter_modifier
 from customizations import *
-
+from order_class import Order
 
 # Collect price per square foot
 sqft_price = input("Enter price per square foot: $")
 empty_response = empty_string(sqft_price)
 sqft_price = empty_literal(empty_response, "Please enter price per square foot: $", sqft_price)
 sqft_price = float(sqft_price)
-
 
 # DIAMETER configuration
 diameter_ft = input("Enter diameter of tank (ft): ")
@@ -26,7 +26,6 @@ diameter_inch = float(diameter_inch)
 diameter_tank = converter(diameter_ft, diameter_inch)
 diameter_liner = diameter_modifier(diameter_tank)
 
-
 # DEPTH configuration
 depth_ft = input("Enter depth of tank (ft): ")
 empty_response = empty_string(depth_ft)
@@ -40,48 +39,25 @@ depth_inch = float(depth_inch)
 
 depth_tank = converter(depth_ft, depth_inch)
 
-
-# Customizations
-# USE TANK DIMENSIONS
-circumference_tank = diameter_tank * math.pi
-print(circumference_tank)
-circumference_liner = diameter_liner * math.pi
 print("")
 
+# Create object
+quote = Order(sqft_price, diameter_tank, depth_tank)
 
-# SQUARE FOOTAGE calculation
-# Wall square footage
-actual_wall_square_footage = tank_wall_sq_footage(circumference_liner, depth_tank)
-# Floor square footage
-actual_floor_square_footage = tank_floor_sq_footage(diameter_liner)
-# Total square footage
-actual_square_footage = actual_wall_square_footage + actual_floor_square_footage
-print("Total tank square footage: {:,} ft.".format(actual_square_footage))
-
-# ADD the 5%
-five_percent = actual_square_footage * 0.05
-square_footage = round(actual_square_footage + five_percent)   # Add the 5%
-
-# Cost of liner
-liner_cost = square_footage * sqft_price
+# Print square footage
+Order.print_square_footage(quote)
 
 # Prints out cost of single liner
-print("\nQuote cost of liner: ${:,.2f}".format(liner_cost))
-
+print("\nQuote cost of liner: ${:,.2f}".format(Order.get_liner_cost(quote)))
 
 # Prompt for customization loop
 print("\nCustomize order below:\nType \'help\' for options\nType \'back\' for menu\n------------------------\n")
 
-
 # Setup for customization loop
-total_quote_cost = liner_cost
-total_liners_cost = liner_cost
-total_liners = 1
-additional_liners_cost = 0
 order_list = []
 satisfied = False
 discounted = False
-
+total_quote_cost = Order.get_liner_cost(quote)
 
 # Customization loop
 while not satisfied:
@@ -124,7 +100,7 @@ while not satisfied:
                                                       additional_geo_layers)
                 additional_geo_layers = int(additional_geo_layers)
 
-                additional_geo_layer_section = input("Is additional geo padding for 'wall', 'floor', or 'both': ")\
+                additional_geo_layer_section = input("Is additional geo padding for 'wall', 'floor', or 'both': ") \
                     .lower()
                 if additional_geo_layer_section[0] == 'w':
                     total_geo_wall_layers += additional_geo_layers
@@ -138,45 +114,33 @@ while not satisfied:
                 if is_geo_satisfied[0] == 'n':
                     geo_satisfied = True
 
-        # Finds cost of one layer of geo
-        single_wall_layer_geo_cost = single_wall_geo_cost(actual_wall_square_footage)
-        single_floor_layer_geo_cost = single_floor_geo_cost(actual_floor_square_footage)
-        total_single_layer_geo_cost = single_wall_layer_geo_cost + single_floor_layer_geo_cost
-
         # Finds cost of order's layers of geo
-        wall_geo_cost = single_wall_layer_geo_cost * total_geo_wall_layers
-        floor_geo_cost = single_floor_layer_geo_cost * total_geo_floor_layers
-        total_geo_cost = wall_geo_cost + floor_geo_cost
+        total_geo_cost = Order.get_single_layer_geo_cost(quote, "wall") * total_geo_wall_layers + \
+            Order.get_single_layer_geo_cost(quote, "floor") * total_geo_floor_layers
+
+        total_quote_cost += total_geo_cost
 
         # Keep track of order
         order_list.append("geo")
 
         if needs_more_geo_layers[0] == 'y':
-            print("\nCost of single layer of geo: ${:,.2f}".format(total_single_layer_geo_cost))
-            print("Cost of total geo added: ${:,.2f}\n".format(total_geo_cost))
+            print("\nCost of single layer of geo: ${:,.2f}".format(Order.get_single_layer_geo_cost(quote, "both")))
+            print("Cost of total geo added: ${:,.2f}".format(total_geo_cost))
+            print("Total quote cost: ${:,.2f}\n".format(total_quote_cost))
         else:
-            print("\nCost of single layer of geo added: ${:,.2f}\n".format(total_single_layer_geo_cost))
+            print("\nCost of single layer of geo added: ${:,.2f}".format(
+                Order.get_single_layer_geo_cost(quote, "both")))
+            print("Total quote cost: ${:,.2f}\n".format(total_quote_cost))
 
     # J-BOLTS
     elif command[0] == 'j':
-
-        # Cost per j-bolt
-        jbolt_cost = 20
-
-        # Collects number of jbolts used
-        jbolt_num = math.ceil(circumference_tank / 1.5)
-
-        # Calculates total cost of jbolts
-        total_jbolt_cost = jbolt_cost * jbolt_num
-
         # Accounts in total quote cost
-        total_quote_cost += total_jbolt_cost
+        total_quote_cost += Order.get_jbolt_cost(quote)
 
         # Keep track of order
         order_list.append("jbolt")
 
-        # Print out important information
-        print("\nCost of j-bolts added: ${:,.2f}".format(total_jbolt_cost))
+        print("\nCost of j-bolts added: ${:,.2f}".format(Order.get_jbolt_cost(quote)))
         print("\nTotal quote cost: ${:,.2f}\n".format(total_quote_cost))
 
     # INSTALLATION
