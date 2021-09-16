@@ -47,17 +47,19 @@ class Order:
         circumference_tank = self.diameter_liner * math.pi
         return circumference_tank
 
-    def get_liner_cost(self):
+    def get_single_liner_cost(self):
         liner_cost = Order.get_square_footage(self) * self.square_footage_price
         return liner_cost
 
-    def get_total_liners_cost(self, liner_numbers):
-        total_liners_cost = Order.get_liner_cost(self) * liner_numbers
+    def get_total_liners_cost(self):
+        total_liners_cost = Order.get_single_liner_cost(self) * self.total_liners
         return total_liners_cost
+
+    def get_total_liners(self):
+        return self.total_liners
 
     def set_total_liners(self, num_liners_added):
         self.total_liners += num_liners_added
-        return self.total_liners
 
     def get_single_layer_geo_cost(self, section):
         geo_wall_cost = round(Order.get_actual_square_footage(self, "wall") * 0.4, 2)
@@ -79,6 +81,16 @@ class Order:
         total_jbolt_cost = jbolt_cost * jbolt_num
         return total_jbolt_cost
 
-    # Too tired, not wise to do right now
-    def get_installation_cost(self):
-        raise NotImplementedError
+    def calc_installation_cost(self):
+        if self.diameter_tank <= 50:
+            return 14500
+        elif self.diameter_tank <= 69:
+            return 15500
+        elif self.diameter_tank <= 79:
+            return 17500
+        elif self.diameter_tank <= 99:
+            return 20500
+        elif self.diameter_tank <= 110:
+            return 22500
+        else:
+            return 0
