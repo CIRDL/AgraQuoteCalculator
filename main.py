@@ -48,7 +48,7 @@ quote = Order(sqft_price, diameter_tank, depth_tank)
 Order.print_square_footage(quote)
 
 # Prints out cost of single liner
-print("\nQuote cost of liner: ${:,.2f}".format(Order.get_liner_cost(quote)))
+print("\nQuote cost of liner: ${:,.2f}".format(Order.get_single_liner_cost(quote)))
 
 # Prompt for customization loop
 print("\nCustomize order below:\nType \'help\' for options\nType \'back\' for menu\n------------------------\n")
@@ -57,7 +57,8 @@ print("\nCustomize order below:\nType \'help\' for options\nType \'back\' for me
 order_list = []
 satisfied = False
 discounted = False
-total_quote_cost = Order.get_liner_cost(quote)
+customized_installation_cost = False
+total_quote_cost = Order.get_single_liner_cost(quote)
 
 # Customization loop
 while not satisfied:
@@ -76,7 +77,6 @@ while not satisfied:
 
     # GEO
     elif command[0] == 'g' and command[1] == 'e':
-
         geo_satisfied = False
 
         # TODO - SEE IF NECESSARY TO INCLUDE MORE THAN ONE LAYER OPTION
@@ -145,22 +145,9 @@ while not satisfied:
 
     # INSTALLATION
     elif command[0] == 'i' and command[1] == 'n':
-
-        # For back button
-        customized_installation_cost = False
-
-        # Calculates cost of installation per diameter length
-        if diameter_tank <= 50:
-            installation_cost = 14500
-        elif diameter_tank <= 69:
-            installation_cost = 15500
-        elif diameter_tank <= 79:
-            installation_cost = 17500
-        elif diameter_tank <= 99:
-            installation_cost = 20500
-        elif diameter_tank <= 110:
-            installation_cost = 22500
-        else:
+        installation_cost = Order.calc_installation_cost(quote)
+        # Returns zero if diameter > 110
+        if installation_cost == 0:
             installation_cost = input("\nPlease enter installation cost: $")
             customized_installation_cost = True
             empty_response = empty_string(installation_cost)
@@ -176,31 +163,28 @@ while not satisfied:
                     continue
                 installation_cost = float(installation_cost)
 
-        # Figures cost of traveling
         if not customized_installation_cost:
-            miles_traveled = input("\nEnter number of miles being charged: ")
-            empty_response = empty_string(miles_traveled)
-            if not empty_response and (miles_traveled[0] == 'b' or miles_traveled[0] == 'B'):
-                print("")
-                continue
+            print()
 
-            else:
-                miles_traveled = empty_literal(empty_response, "Please enter number of miles being charged: "
-                                               , miles_traveled)
-                if miles_traveled[0] == 'b' or miles_traveled[0] == 'B':
-                    print("")
-                    continue
-                miles_traveled = int(miles_traveled)
-        if customized_installation_cost:
-            miles_traveled = input("Enter number of miles being charged: ")
-            empty_response = empty_string(miles_traveled)
+        # Figures cost of traveling
+        miles_traveled = input("Enter number of miles being charged: ")
+        empty_response = empty_string(miles_traveled)
+        if not empty_response and (miles_traveled[0] == 'b' or miles_traveled[0] == 'B'):
+            print("")
+            continue
+        else:
+            miles_traveled = empty_literal(empty_response, "Please enter number of miles being charged: "
+                                           , miles_traveled)
             if empty_response:
                 miles_traveled = empty_literal(empty_response, "Please enter number of miles being charged: "
                                                , miles_traveled)
-                miles_traveled = int(miles_traveled)
+            if miles_traveled[0] == 'b' or miles_traveled[0] == 'B':
+                print("")
+                continue
+        miles_traveled = int(miles_traveled)
 
         travel_cost = miles_traveled * 450
-        print('Standard travel costs ${:,.2f}.'.format(travel_cost))
+        print('Standard travel costs ${:,}.'.format(travel_cost))
         modified_travel_cost = input("Would you like to change it (yes/no)? ").lower()
         empty_response = empty_string(modified_travel_cost)
         if empty_response:
@@ -210,7 +194,7 @@ while not satisfied:
             empty_response = empty_string(travel_cost)
             if empty_response:
                 travel_cost = empty_literal(empty_response, "Please enter travel cost: $", travel_cost)
-            travel_cost = int(travel_cost)
+            travel_cost = float(travel_cost)
 
         # Calculates total cost
         total_installation_cost = installation_cost + travel_cost
@@ -224,11 +208,10 @@ while not satisfied:
         # Prints out info
         print("\nCost of installation added: ${:,.2f}".format(installation_cost))
         print("Cost of mileage & mobilization added: ${:,.2f}".format(travel_cost))
-        print("\nTotal cost of package added: ${:,.2f}\n".format(total_installation_cost))
+        print("\nTotal cost of installation package added: ${:,.2f}\n".format(total_installation_cost))
 
     # ADD liners
     elif command[0] == 'a' and command[1] == 'd':
-
         # Collect number of liners
         additional_liners = input("\nEnter number of liners you wish to add: ")
         if additional_liners[0] == 'b' or additional_liners[0] == 'B':
@@ -237,23 +220,17 @@ while not satisfied:
         else:
             additional_liners = int(additional_liners)
 
-        # Calculate total cost of liners
-        additional_liners_cost = liner_cost * additional_liners
-        if discounted:
-            additional_liners_cost = discounted_liner_cost * additional_liners
-
-        # Adds total liners of order
-        total_liners += additional_liners
-        total_liners_cost += additional_liners_cost
+        # Sets total liners for quote
+        Order.set_total_liners(quote, additional_liners)
 
         # Calculate total cost
-        total_quote_cost += additional_liners_cost
+        total_quote_cost -= Order.get_single_liner_cost(quote)
+        total_quote_cost += Order.get_total_liners_cost(quote)
 
         # TODO - might have to add the whole lining system once it's in the program
 
         # Print out final info
-        print("\nCost of additional liners added: ${:,.2f}".format(additional_liners_cost))
-        print("Total cost of all liners: ${:,.2f}\n".format(total_liners_cost))
+        print("\nTotal cost of all liners: ${:,.2f}\n".format(Order.get_total_liners_cost(quote)))
 
     # DISCOUNT liner price
     elif command[0] == 'd' and command[1] == 'i':
